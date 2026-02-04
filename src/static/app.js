@@ -553,6 +553,10 @@ document.addEventListener("DOMContentLoaded", () => {
         </ul>
       </div>
       <div class="activity-card-actions">
+        <button class="share-button" data-activity="${name}" data-description="${details.description.replace(/"/g, '&quot;')}" data-schedule="${formattedSchedule.replace(/"/g, '&quot;')}" title="Share this activity">
+          <span class="share-icon">📤</span>
+          <span class="share-text">Share</span>
+        </button>
         ${
           currentUser
             ? `
@@ -576,6 +580,17 @@ document.addEventListener("DOMContentLoaded", () => {
     deleteButtons.forEach((button) => {
       button.addEventListener("click", handleUnregister);
     });
+
+    // Add click handler for share button
+    const shareButton = activityCard.querySelector(".share-button");
+    if (shareButton) {
+      shareButton.addEventListener("click", (e) => {
+        const activityName = e.currentTarget.dataset.activity;
+        const description = e.currentTarget.dataset.description;
+        const schedule = e.currentTarget.dataset.schedule;
+        handleShare(activityName, description, schedule);
+      });
+    }
 
     // Add click handler for register button (only when authenticated)
     if (currentUser) {
@@ -809,6 +824,138 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       messageDiv.classList.add("hidden");
     }, 5000);
+  }
+
+  // Handle share activity
+  async function handleShare(activityName, description, schedule) {
+    const shareText = `Check out this activity at Mergington High School!\n\n${activityName}\n${description}\nSchedule: ${schedule}`;
+    const shareUrl = window.location.href;
+
+    // Check if the Web Share API is supported
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${activityName} - Mergington High School`,
+          text: shareText,
+          url: shareUrl,
+        });
+        showMessage("Activity shared successfully!", "success");
+      } catch (error) {
+        // User cancelled or error occurred
+        if (error.name !== "AbortError") {
+          console.error("Error sharing:", error);
+          // Fall back to copy link if sharing failed
+          showShareModal(activityName, description, schedule, shareUrl);
+        }
+      }
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      showShareModal(activityName, description, schedule, shareUrl);
+    }
+  }
+
+  // Show share modal with sharing options
+  function showShareModal(activityName, description, schedule, shareUrl) {
+    // Create share modal if it doesn't exist
+    let shareModal = document.getElementById("share-modal");
+    if (!shareModal) {
+      shareModal = document.createElement("div");
+      shareModal.id = "share-modal";
+      shareModal.className = "modal hidden";
+      shareModal.innerHTML = `
+        <div class="modal-content">
+          <span class="close-share-modal">&times;</span>
+          <h3>Share Activity</h3>
+          <p id="share-activity-name" class="share-activity-name"></p>
+          <div class="share-options">
+            <button id="copy-link-button" class="share-option-button">
+              <span class="share-option-icon">🔗</span>
+              <span>Copy Link</span>
+            </button>
+            <button id="share-email-button" class="share-option-button">
+              <span class="share-option-icon">✉️</span>
+              <span>Email</span>
+            </button>
+          </div>
+          <div id="share-message" class="hidden message"></div>
+        </div>
+      `;
+      document.body.appendChild(shareModal);
+
+      // Add close handler
+      const closeShareModal = shareModal.querySelector(".close-share-modal");
+      closeShareModal.addEventListener("click", () => {
+        shareModal.classList.remove("show");
+        setTimeout(() => {
+          shareModal.classList.add("hidden");
+        }, 300);
+      });
+
+      // Close modal when clicking outside
+      shareModal.addEventListener("click", (event) => {
+        if (event.target === shareModal) {
+          shareModal.classList.remove("show");
+          setTimeout(() => {
+            shareModal.classList.add("hidden");
+          }, 300);
+        }
+      });
+    }
+
+    // Update modal content
+    const shareActivityNameEl = document.getElementById("share-activity-name");
+    shareActivityNameEl.textContent = activityName;
+
+    const shareText = `Check out this activity at Mergington High School!\n\n${activityName}\n${description}\nSchedule: ${schedule}`;
+
+    // Set up copy link button
+    const copyLinkButton = document.getElementById("copy-link-button");
+    copyLinkButton.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showShareMessage("Link copied to clipboard!", "success");
+        setTimeout(() => {
+          shareModal.classList.remove("show");
+          setTimeout(() => {
+            shareModal.classList.add("hidden");
+          }, 300);
+        }, 1000);
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
+        showShareMessage("Failed to copy link", "error");
+      }
+    };
+
+    // Set up email button
+    const shareEmailButton = document.getElementById("share-email-button");
+    shareEmailButton.onclick = () => {
+      const subject = encodeURIComponent(
+        `${activityName} - Mergington High School`
+      );
+      const body = encodeURIComponent(`${shareText}\n\n${shareUrl}`);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      shareModal.classList.remove("show");
+      setTimeout(() => {
+        shareModal.classList.add("hidden");
+      }, 300);
+    };
+
+    // Show modal
+    shareModal.classList.remove("hidden");
+    setTimeout(() => {
+      shareModal.classList.add("show");
+    }, 10);
+  }
+
+  // Show message in share modal
+  function showShareMessage(text, type) {
+    const shareMessage = document.getElementById("share-message");
+    shareMessage.textContent = text;
+    shareMessage.className = `message ${type}`;
+    shareMessage.classList.remove("hidden");
+    setTimeout(() => {
+      shareMessage.classList.add("hidden");
+    }, 3000);
   }
 
   // Handle form submission
