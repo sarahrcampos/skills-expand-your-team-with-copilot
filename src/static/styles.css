@@ -720,5 +720,3 @@ footer {
 #dark-mode-toggle:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
-
-/* Remove the positioning adjustments for user controls since we moved the toggle to the left */
