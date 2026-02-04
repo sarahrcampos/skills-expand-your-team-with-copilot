@@ -44,6 +44,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Authentication state
   let currentUser = null;
 
+  // Helper function to escape HTML special characters
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   // Time range mappings for the dropdown
   const timeRanges = {
     morning: { start: "06:00", end: "08:00" }, // Before school hours
@@ -553,7 +560,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </ul>
       </div>
       <div class="activity-card-actions">
-        <button class="share-button" data-activity="${name}" data-description="${details.description.replace(/"/g, '&quot;')}" data-schedule="${formattedSchedule.replace(/"/g, '&quot;')}" title="Share this activity">
+        <button class="share-button" data-activity="${escapeHtml(name)}" data-description="${escapeHtml(details.description)}" data-schedule="${escapeHtml(formattedSchedule)}" title="Share this activity">
           <span class="share-icon">📤</span>
           <span class="share-text">Share</span>
         </button>
@@ -900,6 +907,54 @@ document.addEventListener("DOMContentLoaded", () => {
           }, 300);
         }
       });
+
+      // Set up copy link button handler (only once)
+      const copyLinkButton = document.getElementById("copy-link-button");
+      copyLinkButton.addEventListener("click", async () => {
+        const currentShareUrl = copyLinkButton.dataset.shareUrl;
+        // Check if clipboard API is available
+        if (!navigator.clipboard?.writeText) {
+          showShareMessage("Clipboard not available. Please copy manually: " + currentShareUrl, "error");
+          return;
+        }
+        
+        try {
+          await navigator.clipboard.writeText(currentShareUrl);
+          showShareMessage("Link copied to clipboard!", "success");
+          setTimeout(() => {
+            shareModal.classList.remove("show");
+            setTimeout(() => {
+              shareModal.classList.add("hidden");
+            }, 300);
+          }, 1000);
+        } catch (error) {
+          console.error("Error copying to clipboard:", error);
+          showShareMessage("Failed to copy link", "error");
+        }
+      });
+
+      // Set up email button handler (only once)
+      const shareEmailButton = document.getElementById("share-email-button");
+      shareEmailButton.addEventListener("click", () => {
+        const currentActivityName = shareEmailButton.dataset.activityName;
+        const currentShareText = shareEmailButton.dataset.shareText;
+        const currentShareUrl = shareEmailButton.dataset.shareUrl;
+        
+        const subject = encodeURIComponent(
+          `${currentActivityName} - Mergington High School`
+        );
+        const body = encodeURIComponent(`${currentShareText}\n\n${currentShareUrl}`);
+        
+        // Create a temporary anchor to open email without navigating away
+        const mailLink = document.createElement('a');
+        mailLink.href = `mailto:?subject=${subject}&body=${body}`;
+        mailLink.click();
+        
+        shareModal.classList.remove("show");
+        setTimeout(() => {
+          shareModal.classList.add("hidden");
+        }, 300);
+      });
     }
 
     // Update modal content
@@ -908,37 +963,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const shareText = `Check out this activity at Mergington High School!\n\n${activityName}\n${description}\nSchedule: ${schedule}`;
 
-    // Set up copy link button
+    // Store data in button datasets for use by event handlers
     const copyLinkButton = document.getElementById("copy-link-button");
-    copyLinkButton.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showShareMessage("Link copied to clipboard!", "success");
-        setTimeout(() => {
-          shareModal.classList.remove("show");
-          setTimeout(() => {
-            shareModal.classList.add("hidden");
-          }, 300);
-        }, 1000);
-      } catch (error) {
-        console.error("Error copying to clipboard:", error);
-        showShareMessage("Failed to copy link", "error");
-      }
-    };
+    copyLinkButton.dataset.shareUrl = shareUrl;
 
-    // Set up email button
     const shareEmailButton = document.getElementById("share-email-button");
-    shareEmailButton.onclick = () => {
-      const subject = encodeURIComponent(
-        `${activityName} - Mergington High School`
-      );
-      const body = encodeURIComponent(`${shareText}\n\n${shareUrl}`);
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-      shareModal.classList.remove("show");
-      setTimeout(() => {
-        shareModal.classList.add("hidden");
-      }, 300);
-    };
+    shareEmailButton.dataset.activityName = activityName;
+    shareEmailButton.dataset.shareText = shareText;
+    shareEmailButton.dataset.shareUrl = shareUrl;
 
     // Show modal
     shareModal.classList.remove("hidden");
