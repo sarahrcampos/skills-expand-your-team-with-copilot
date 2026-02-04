@@ -914,7 +914,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const currentShareUrl = copyLinkButton.dataset.shareUrl;
         // Check if clipboard API is available
         if (!navigator.clipboard?.writeText) {
-          showShareMessage("Clipboard not available. Please copy manually: " + currentShareUrl, "error");
+          showShareMessage("Clipboard not available in this browser", "error");
           return;
         }
         
@@ -945,10 +945,8 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         const body = encodeURIComponent(`${currentShareText}\n\n${currentShareUrl}`);
         
-        // Create a temporary anchor to open email without navigating away
-        const mailLink = document.createElement('a');
-        mailLink.href = `mailto:?subject=${subject}&body=${body}`;
-        mailLink.click();
+        // Open email client in a new window to avoid navigating away
+        window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
         
         shareModal.classList.remove("show");
         setTimeout(() => {
